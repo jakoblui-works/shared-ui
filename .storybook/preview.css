@@ -1,3 +1,19 @@
-/* Stands in for an app's stylesheet: Tailwind, then the package's styles. */
+/* Stands in for an app's stylesheet (see the top of src/theme.css), with site-web's violet. */
 @import "tailwindcss";
-@import "../src/styles.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "../src/theme.css";
+
+@theme {
+  --color-primary-50: var(--color-violet-50);
+  --color-primary-100: var(--color-violet-100);
+  --color-primary-200: var(--color-violet-200);
+  --color-primary-300: var(--color-violet-300);
+  --color-primary-400: var(--color-violet-400);
+  --color-primary-500: var(--color-violet-500);
+  --color-primary-600: var(--color-violet-600);
+  --color-primary-700: var(--color-violet-700);
+  --color-primary-800: var(--color-violet-800);
+  --color-primary-900: var(--color-violet-900);
+  --color-primary-950: var(--color-violet-950);
+}

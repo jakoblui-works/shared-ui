@@ -1,3 +1,4 @@
+import { withThemeByClassName } from "@storybook/addon-themes";
 import type { Preview } from "@storybook/react-vite";
 import "./preview.css";
 
@@ -13,6 +14,13 @@ const preview: Preview = {
       test: "todo",
     },
   },
+  // The apps differ: site-web is dark-only, cv-web has both.
+  decorators: [
+    withThemeByClassName({
+      themes: { light: "", dark: "dark" },
+      defaultTheme: "dark",
+    }),
+  ],
 };
 
 export default preview;

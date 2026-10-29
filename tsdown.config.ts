@@ -6,5 +6,5 @@ export default defineConfig({
   platform: "browser",
   dts: true,
   // The stylesheet ships as source: each app's Tailwind compiles it along with its own.
-  copy: "src/styles.css",
+  copy: "src/theme.css",
 });

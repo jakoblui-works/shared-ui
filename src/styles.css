@@ -1,6 +1,0 @@
-/*
- * Imported by each app after Tailwind (`@import "@jakoblui-works/shared-ui/styles.css";`).
- * Tailwind skips node_modules, so this points it at the package's built components
- * (paths are relative to this file, which sits next to them in dist/).
- */
-@source "./";
