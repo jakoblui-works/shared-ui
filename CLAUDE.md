@@ -30,6 +30,7 @@ pnpm check-package     # publint on the built package; run after build```
 
 ## Publishing
 - Bump `version` in `package.json`, merge, then tag `main` with `v<version>` (e.g. `v0.0.2`). The tag runs `publish.yml`: CI, then checks that the tag matches the version and is on `main`, then `pnpm publish` (which builds first, `prepack`) to GitHub Packages with `GITHUB_TOKEN`. A published version can't be replaced; fix forward with a new one.
+- The same tag builds the Storybook image (`Dockerfile.storybook`, `nginx.conf`; pushed to GHCR as `shared-ui-storybook`) and triggers the infra deploy, so the hosted Storybook always shows a published version. storybook.jakoblui.com composes it through `refs`. A push to `main` without a tag deploys nothing. If the image or the deploy fails after the publish, use "Re-run failed jobs": re-running all jobs fails at the publish, since the version already exists.
 - **Installing needs a token even though the package is public** (a GitHub Packages rule). An app commits an `.npmrc` with only the scope: `@jakoblui-works:registry=https://npm.pkg.github.com`. The token goes elsewhere, never in the repo's `.npmrc` (pnpm ignores tokens there):
   - locally: a classic PAT with `read:packages`, `pnpm config set "//npm.pkg.github.com/:_authToken" <token>`;
   - an app's CI: `GITHUB_TOKEN`, after this package's settings give the app's repo read access ("Manage Actions access");

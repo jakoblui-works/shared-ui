@@ -46,3 +46,36 @@ jobs:
       - run: pnpm publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Built only for published versions, so the hosted Storybook always shows what the apps can install.
+  build-storybook:
+    needs: publish
+    # One image build at a time: a later tag's build waits for an earlier one, so it ends up as `:latest`.
+    concurrency:
+      group: storybook-image
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        run: |
+          docker build -f Dockerfile.storybook -t ghcr.io/jakoblui-works/shared-ui-storybook:${{ github.sha }} -t ghcr.io/jakoblui-works/shared-ui-storybook:latest .
+          docker push ghcr.io/jakoblui-works/shared-ui-storybook:${{ github.sha }}
+          docker push ghcr.io/jakoblui-works/shared-ui-storybook:latest
+  trigger-deploy:
+    needs: build-storybook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deploy
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_REPO_DISPATCH_TOKEN }}
+        run: |
+          gh api repos/jakoblui-works/infra/dispatches -f event_type=deploy
