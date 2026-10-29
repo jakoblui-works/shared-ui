@@ -1,0 +1,3 @@
+/* Stands in for an app's stylesheet: Tailwind, then the package's styles. */
+@import "tailwindcss";
+@import "../src/styles.css";
