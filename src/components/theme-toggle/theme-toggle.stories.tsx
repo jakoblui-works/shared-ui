@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { renderToStaticMarkup } from "react-dom/server";
 import { expect, userEvent, waitFor } from "storybook/test";
 
 import { THEME_STORAGE_KEY, ThemeToggle } from "./theme-toggle";
@@ -93,4 +94,44 @@ export const BlockedStorage: Story = {
     await waitFor(() => expect(root).not.toHaveClass("dark"));
     await expect(toggle).not.toBeChecked();
   },
+};
+
+const looks = (element: Element) => {
+  const { translate, backgroundColor } = getComputedStyle(element);
+  return { translate, backgroundColor };
+};
+
+/**
+ * The toggle as a prerendered page shows it before its JavaScript runs, next to a mounted one: the
+ * switch and its thumb must already look the same, or the thumb jumps on every load.
+ */
+const prerenderedMatchesMounted: Story = {
+  render: () => (
+    <>
+      <div data-testid="prerendered" dangerouslySetInnerHTML={{ __html: renderToStaticMarkup(<ThemeToggle />) }} />
+      <div data-testid="mounted">
+        <ThemeToggle />
+      </div>
+    </>
+  ),
+  play: async ({ canvas }) => {
+    const prerendered = canvas.getByTestId("prerendered").querySelector("[role=switch]")!;
+    const mounted = canvas.getByTestId("mounted").querySelector("[role=switch]")!;
+    await waitFor(() => {
+      expect(looks(prerendered)).toEqual(looks(mounted));
+      expect(looks(prerendered.firstElementChild!)).toEqual(looks(mounted.firstElementChild!));
+    });
+  },
+};
+
+export const PrerenderedLight: Story = {
+  ...prerenderedMatchesMounted,
+  parameters: { themes: { themeOverride: "light" } },
+  beforeEach: startIn(false),
+};
+
+export const PrerenderedDark: Story = {
+  ...prerenderedMatchesMounted,
+  parameters: { themes: { themeOverride: "dark" } },
+  beforeEach: startIn(true),
 };

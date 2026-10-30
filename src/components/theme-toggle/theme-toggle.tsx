@@ -20,9 +20,10 @@ const prefersReducedMotion = () => {
 /** A light/dark switch. It starts from the class the inline script set, so it needs no provider. */
 export const ThemeToggle = () => {
   // Read after mounting, not while rendering: a prerendered page is rendered in Node, which has no
-  // document, and the page's first render has to match it. A layout effect runs before the first
-  // paint, so the switch never shows the wrong state.
-  const [dark, setDark] = useState(false);
+  // document, and the page's first render has to match it. Until then (`null`) the page is showing
+  // without its JavaScript, so `data-pending` draws the switch from the `.dark` class in CSS, the
+  // same as it will look once mounted. Nothing changes on mounting, so nothing animates.
+  const [dark, setDark] = useState<boolean | null>(null);
   useLayoutEffect(() => {
     setDark(isDark());
   }, []);
@@ -54,12 +55,13 @@ export const ThemeToggle = () => {
     <div className="flex items-center gap-2 text-muted-foreground">
       <SunIcon className="size-4" aria-hidden />
       <SwitchPrimitive.Root
-        checked={dark}
+        checked={dark ?? false}
         onCheckedChange={onCheckedChange}
         aria-label="Dark theme"
-        className="group/switch relative inline-flex h-[18.4px] w-[32px] shrink-0 cursor-pointer items-center rounded-full border border-transparent shadow-xs transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80"
+        data-pending={dark === null ? "" : undefined}
+        className="group/switch relative inline-flex h-[18.4px] w-[32px] shrink-0 cursor-pointer items-center rounded-full border border-transparent shadow-xs transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 dark:data-pending:bg-primary!"
       >
-        <SwitchPrimitive.Thumb className="pointer-events-none block size-4 rounded-full bg-background ring-0 transition-transform data-checked:translate-x-[calc(100%-2px)] data-unchecked:translate-x-0 dark:data-checked:bg-primary-foreground dark:data-unchecked:bg-foreground" />
+        <SwitchPrimitive.Thumb className="pointer-events-none block size-4 rounded-full bg-background ring-0 transition-transform data-checked:translate-x-[calc(100%-2px)] data-unchecked:translate-x-0 dark:data-checked:bg-primary-foreground dark:data-unchecked:bg-foreground dark:group-data-pending/switch:translate-x-[calc(100%-2px)]! dark:group-data-pending/switch:bg-primary-foreground!" />
       </SwitchPrimitive.Root>
       <MoonIcon className="size-4" aria-hidden />
     </div>
