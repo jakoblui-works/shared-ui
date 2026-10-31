@@ -1,6 +1,6 @@
 {
   "name": "@jakoblui-works/shared-ui",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "UI shared by the jakoblui.com sites: the header, site switcher, theme, a default 404 page and the theme toggle.",
   "type": "module",
   "packageManager": "pnpm@12.4.2",
