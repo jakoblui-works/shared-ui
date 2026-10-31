@@ -9,6 +9,7 @@ export type Site = {
 export const sites = [
   { subdomain: "www", label: "Home", url: "https://jakoblui.com" },
   { subdomain: "cv", label: "CV assembler", url: "https://cv.jakoblui.com" },
+  { subdomain: "ats", label: "ATS check", url: "https://ats.jakoblui.com" },
 ] as const satisfies readonly Site[];
 
 export type SiteSubdomain = (typeof sites)[number]["subdomain"];
