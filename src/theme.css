@@ -8,7 +8,8 @@
  *   @import "@jakoblui-works/shared-ui/theme.css";
  *   @theme { --color-primary-50: var(--color-emerald-50); … through 950 }
  *
- * The header uses `primary` (light mode 700, dark mode 400) and the scale's 300 and 800.
+ * The header uses `primary` (light mode 700, dark mode 400) for the current site's box. The switcher's
+ * other boxes use each site's own palette (see `sites`), at the same steps, 800 and 300 when highlighted.
  * The fonts are site-web's: Inter for text, Space Grotesk for headings, JetBrains Mono for code, Sora for
  * the logo. An app can override them in its own `@theme inline`.
  */
