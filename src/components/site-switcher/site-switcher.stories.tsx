@@ -236,55 +236,88 @@ const labelsInAColumnRightOfTheBoxes = async (boxRects: DOMRect[], labelRects: D
   for (const rect of boxRects) await expect(rect.right).toBeLessThanOrEqual(labelLeft + tolerance);
 };
 
+type Measured = Awaited<ReturnType<typeof measure>>;
+
+/** Room to the left: right-aligned, the widest box keeps more than 1rem from the window's edge. */
+const expectAlignedRight = async ({ triggerRect, boxRects, labelRects }: Measured) => {
+  const widest = Math.max(...boxRects.map((rect) => rect.width));
+  await expect(triggerRect.right - widest, "room for the widest box, right-aligned").toBeGreaterThan(
+    rem() + tolerance,
+  );
+  for (const rect of boxRects) {
+    await expect(Math.abs(rect.right - triggerRect.right), "a box's right edge vs the trigger's").toBeLessThanOrEqual(
+      tolerance,
+    );
+  }
+  await labelsInAColumnRightOfTheBoxes(boxRects, labelRects);
+};
+
+/** The trigger 1rem from the window's edge: every box left-aligned with it, none closer than 1rem to the edge. */
+const expectAlignedLeft = async ({ triggerRect, boxRects, labelRects }: Measured) => {
+  const fromEdge = Math.abs(triggerRect.left - rem());
+  await expect(fromEdge, "the trigger sits 1rem from the window's edge").toBeLessThanOrEqual(tolerance);
+  for (const rect of boxRects) {
+    await expect(rect.left, "a box's distance from the window's left edge").toBeGreaterThanOrEqual(rem() - tolerance);
+  }
+  for (const rect of boxRects) {
+    await expect(Math.abs(rect.left - triggerRect.left), "a box's left edge vs the trigger's").toBeLessThanOrEqual(
+      tolerance,
+    );
+  }
+  await labelsInAColumnRightOfTheBoxes(boxRects, labelRects);
+};
+
+const withRoom = "50vw";
+const nearTheEdge = "1rem"; // Like the header's `px-4`.
+
+/** Wraps the story in a block with the given left padding, which a play function can change. */
+const paddedLeft = (paddingLeft: string): NonNullable<Story["decorators"]> => [
+  (Story) => (
+    <div data-testid="padding" style={{ paddingLeft, paddingTop: "1rem" }}>
+      <Story />
+    </div>
+  ),
+];
+
 export const AlignedRightWithRoom: Story = {
   args: { sites: withLongSubdomain, current: sites[0] },
   parameters: { layout: "fullscreen" },
-  decorators: [
-    (Story) => (
-      <div style={{ paddingLeft: "50vw", paddingTop: "1rem" }}>
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: paddedLeft(withRoom),
   play: async (context) => {
-    const { triggerRect, boxRects, labelRects } = await measure(context);
-    // Room to the left: right-aligned, the widest box keeps more than 1rem from the window's edge.
-    const widest = Math.max(...boxRects.map((rect) => rect.width));
-    await expect(triggerRect.right - widest, "room for the widest box, right-aligned").toBeGreaterThan(
-      rem() + tolerance,
-    );
-    for (const rect of boxRects) {
-      await expect(Math.abs(rect.right - triggerRect.right), "a box's right edge vs the trigger's").toBeLessThanOrEqual(
-        tolerance,
-      );
-    }
-    await labelsInAColumnRightOfTheBoxes(boxRects, labelRects);
+    await expectAlignedRight(await measure(context));
   },
 };
 
 export const AlignedLeftNearTheEdge: Story = {
   args: { sites: withLongSubdomain, current: sites[0] },
   parameters: { layout: "fullscreen" },
-  // Like the header's `px-4`.
-  decorators: [
-    (Story) => (
-      <div style={{ paddingLeft: "1rem", paddingTop: "1rem" }}>
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: paddedLeft(nearTheEdge),
   play: async (context) => {
-    const { triggerRect, boxRects, labelRects } = await measure(context);
-    const fromEdge = Math.abs(triggerRect.left - rem());
-    await expect(fromEdge, "the trigger sits 1rem from the window's edge").toBeLessThanOrEqual(tolerance);
-    for (const rect of boxRects) {
-      await expect(rect.left, "a box's distance from the window's left edge").toBeGreaterThanOrEqual(rem() - tolerance);
-    }
-    for (const rect of boxRects) {
-      await expect(Math.abs(rect.left - triggerRect.left), "a box's left edge vs the trigger's").toBeLessThanOrEqual(
-        tolerance,
-      );
-    }
-    await labelsInAColumnRightOfTheBoxes(boxRects, labelRects);
+    await expectAlignedLeft(await measure(context));
+  },
+};
+
+/** The alignment is decided on each open, from where the trigger is then. */
+export const AlignmentFollowsTheTrigger: Story = {
+  args: { sites: withLongSubdomain, current: sites[0] },
+  parameters: { layout: "fullscreen" },
+  decorators: paddedLeft(withRoom),
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    const padding = canvas.getByTestId("padding");
+    const closeMenu = async () => {
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    };
+
+    await expectAlignedRight(await measure(context));
+    await closeMenu();
+
+    padding.style.paddingLeft = nearTheEdge;
+    await expectAlignedLeft(await measure(context));
+    await closeMenu();
+
+    padding.style.paddingLeft = withRoom;
+    await expectAlignedRight(await measure(context));
   },
 };
