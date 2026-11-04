@@ -4,7 +4,21 @@ import { cn } from "cn";
 import { type Site } from "../../lib/sites";
 
 const boxClassName =
-  "inline-flex min-h-6 items-center rounded-md bg-primary py-0.75 font-logo text-xl leading-none font-semibold tracking-[-0.02em] text-primary-foreground";
+  "inline-flex min-h-6 items-center rounded-md py-0.75 font-logo text-xl leading-none font-semibold tracking-[-0.02em]";
+
+// The current site's box uses the app's `primary`.
+const triggerColourClassName = "bg-primary text-primary-foreground";
+
+// Each site's own colours for its box in the menu, mirroring `primary` (700 in light mode, 400 in
+// dark mode; highlighted 800 and 300). Full class names, as Tailwind only generates what it finds as text.
+const paletteClassNames = {
+  violet:
+    "bg-violet-700 text-white group-data-highlighted/site:bg-violet-800 dark:bg-violet-400 dark:text-violet-950 dark:group-data-highlighted/site:bg-violet-300",
+  emerald:
+    "bg-emerald-700 text-white group-data-highlighted/site:bg-emerald-800 dark:bg-emerald-400 dark:text-emerald-950 dark:group-data-highlighted/site:bg-emerald-300",
+  amber:
+    "bg-amber-700 text-white group-data-highlighted/site:bg-amber-800 dark:bg-amber-400 dark:text-amber-950 dark:group-data-highlighted/site:bg-amber-300",
+} satisfies Record<Site["palette"], string>;
 
 type SiteSwitcherProps = {
   sites: readonly Site[];
@@ -24,6 +38,7 @@ export const SiteSwitcher = ({ sites, current }: SiteSwitcherProps) => {
         aria-label="Switch site"
         className={cn(
           boxClassName,
+          triggerColourClassName,
           "notch cursor-pointer pr-3 pl-1.75 outline-none hover:[--notch-color:var(--foreground)] focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:[--notch-color:var(--foreground)]",
         )}
       >
@@ -51,7 +66,8 @@ export const SiteSwitcher = ({ sites, current }: SiteSwitcherProps) => {
                   className={cn(
                     boxClassName,
                     // Highlighted boxes turn darker in light mode, lighter in dark mode.
-                    "px-1.75 [justify-self:unsafe_end] group-data-highlighted/site:bg-primary-800 dark:group-data-highlighted/site:bg-primary-300",
+                    paletteClassNames[site.palette],
+                    "px-1.75 [justify-self:unsafe_end]",
                   )}
                 >
                   {site.subdomain}
