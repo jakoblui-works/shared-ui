@@ -61,23 +61,24 @@ const startIn = (dark: boolean) => () => {
 type Mode = "light" | "dark";
 
 /**
- * Each palette at the step a site's box should have in each mode, as probe classes. Written out in
- * full so Tailwind generates them. Mirrors `primary`: 700 light / 400 dark, highlighted 800 / 300.
+ * Each palette as a site's box should show it in each mode, as probe classes. Written out in full so
+ * Tailwind generates them. Mirrors `primary`: 700 light / 400 dark, highlighted 800 / 300; text white
+ * light / the palette's 950 dark.
  */
 const paletteProbes = {
   violet: {
-    light: { box: "bg-violet-700", highlighted: "bg-violet-800" },
-    dark: { box: "bg-violet-400", highlighted: "bg-violet-300" },
+    light: { box: "bg-violet-700", highlighted: "bg-violet-800", text: "text-white" },
+    dark: { box: "bg-violet-400", highlighted: "bg-violet-300", text: "text-violet-950" },
   },
   emerald: {
-    light: { box: "bg-emerald-700", highlighted: "bg-emerald-800" },
-    dark: { box: "bg-emerald-400", highlighted: "bg-emerald-300" },
+    light: { box: "bg-emerald-700", highlighted: "bg-emerald-800", text: "text-white" },
+    dark: { box: "bg-emerald-400", highlighted: "bg-emerald-300", text: "text-emerald-950" },
   },
   amber: {
-    light: { box: "bg-amber-700", highlighted: "bg-amber-800" },
-    dark: { box: "bg-amber-400", highlighted: "bg-amber-300" },
+    light: { box: "bg-amber-700", highlighted: "bg-amber-800", text: "text-white" },
+    dark: { box: "bg-amber-400", highlighted: "bg-amber-300", text: "text-amber-950" },
   },
-} satisfies Record<Site["palette"], Record<Mode, { box: string; highlighted: string }>>;
+} satisfies Record<Site["palette"], Record<Mode, { box: string; highlighted: string; text: string }>>;
 
 /** The computed value of a CSS property on a hidden element with the given classes, in the current theme. */
 const probe = (className: string, property: "backgroundColor" | "color") => {
@@ -112,18 +113,22 @@ const itemFor = (items: HTMLElement[], site: Site) => {
 
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
+/** Generous (the animation is a few frames): only turns a layout that never settles into a clear failure. */
+const maxSettleFrames = 300;
+
 /** Waits for the popup's opening animation to finish and its items' positions to stop changing. */
 const settled = async (elements: Element[]) => {
   const menu = await screen.findByRole("menu");
   await Promise.all(menu.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => {})));
   const layout = () => JSON.stringify(elements.map((element) => element.getBoundingClientRect()));
   let before = layout();
-  for (;;) {
+  for (let frame = 0; frame < maxSettleFrames; frame++) {
     await nextFrame();
     const after = layout();
     if (after === before) return;
     before = after;
   }
+  throw new Error(`The menu's layout was still moving after ${maxSettleFrames} frames`);
 };
 
 type PlayContext = Parameters<NonNullable<Story["play"]>>[0];
@@ -135,60 +140,83 @@ const openMenu = async ({ canvas, userEvent }: Pick<PlayContext, "canvas" | "use
   return { trigger, items };
 };
 
+const closeMenu = async ({ userEvent }: Pick<PlayContext, "userEvent">) => {
+  await userEvent.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+};
+
 // ---------------------------------------------------------------------------------------------
 // T2: each item's box is in its own site's palette; the trigger stays `primary`.
+
+/** One switcher per site as the current one, so every site shows up as an item. */
+const oneSwitcherPerSite: Story["render"] = (args) => (
+  <div className="flex gap-8">
+    {args.sites.map((site) => (
+      <SiteSwitcher key={site.url} sites={args.sites} current={site} />
+    ))}
+  </div>
+);
 
 const boxesInTheirSitesPalettes =
   (mode: Mode): Story["play"] =>
   async ({ args, canvas, userEvent }) => {
-    const { trigger, items } = await openMenu({ canvas, userEvent });
-    const others = args.sites.filter((site) => site.url !== args.current.url);
-
-    // The trigger keeps the app's `primary`, whichever site is current.
-    await expect(getComputedStyle(boxOf(trigger, args.current.subdomain)).backgroundColor).toBe(
-      probe("bg-primary", "backgroundColor"),
-    );
-
+    const primary = probe("bg-primary", "backgroundColor");
     const mutedForeground = probe("text-muted-foreground", "color");
-    const backgrounds = new Set<string>();
-    for (const site of others) {
-      await expect(Object.keys(paletteProbes), `${site.subdomain} has a known palette`).toContain(site.palette);
-      const item = itemFor(items, site);
-      const box = boxOf(item, site.subdomain);
-      const background = getComputedStyle(box).backgroundColor;
-      await expect(background, `${site.subdomain}'s box`).toBe(
-        probe(paletteProbes[site.palette][mode].box, "backgroundColor"),
-      );
-      backgrounds.add(background);
-      await expect(getComputedStyle(within(item).getByText(site.label)).color, `${site.label}'s label`).toBe(
-        mutedForeground,
-      );
-    }
-    // Different sites, different boxes.
-    await expect(backgrounds.size).toBe(others.length);
 
-    // Highlighted, a box takes its palette's highlight step.
-    for (const site of others) {
-      const item = itemFor(items, site);
-      await userEvent.hover(item);
-      const highlighted = probe(paletteProbes[site.palette][mode].highlighted, "backgroundColor");
-      await waitFor(() => {
-        const background = getComputedStyle(boxOf(item, site.subdomain)).backgroundColor;
-        expect(background, `${site.subdomain}'s highlighted box`).toBe(highlighted);
-      });
+    for (const current of args.sites) {
+      const trigger = canvas
+        .getAllByRole("button", { name: "Switch site" })
+        .find((candidate) => candidate.textContent?.trim() === current.subdomain);
+      if (!trigger) throw new Error(`No switcher for ${current.subdomain}`);
+      await userEvent.click(trigger);
+      const items = await screen.findAllByRole("menuitem");
+      const others = args.sites.filter((site) => site.url !== current.url);
+
+      // The trigger keeps the app's `primary`, whichever site is current.
+      await expect(getComputedStyle(boxOf(trigger, current.subdomain)).backgroundColor, "the trigger").toBe(primary);
+
+      const backgrounds = new Set<string>();
+      for (const site of others) {
+        await expect(Object.keys(paletteProbes), `${site.subdomain} has a known palette`).toContain(site.palette);
+        const { box: boxClass, text: textClass } = paletteProbes[site.palette][mode];
+        const item = itemFor(items, site);
+        const box = getComputedStyle(boxOf(item, site.subdomain));
+        await expect(box.backgroundColor, `${site.subdomain}'s box`).toBe(probe(boxClass, "backgroundColor"));
+        await expect(box.color, `${site.subdomain}'s box text`).toBe(probe(textClass, "color"));
+        backgrounds.add(box.backgroundColor);
+        await expect(getComputedStyle(within(item).getByText(site.label)).color, `${site.label}'s label`).toBe(
+          mutedForeground,
+        );
+      }
+      // Different sites, different boxes.
+      await expect(backgrounds.size).toBe(others.length);
+
+      // Highlighted, a box takes its palette's highlight step.
+      for (const site of others) {
+        const item = itemFor(items, site);
+        await userEvent.hover(item);
+        const highlighted = probe(paletteProbes[site.palette][mode].highlighted, "backgroundColor");
+        await waitFor(() => {
+          const background = getComputedStyle(boxOf(item, site.subdomain)).backgroundColor;
+          expect(background, `${site.subdomain}'s highlighted box`).toBe(highlighted);
+        });
+      }
+
+      await closeMenu({ userEvent });
     }
   };
 
-// Current site is not the hub, so a trigger in the current site's palette would differ from `primary`.
+// Every site is current once, so each palette is checked as an item, and a trigger in the current
+// site's palette (rather than `primary`) shows up whenever that site isn't the hub.
 export const SiteColoursLight: Story = {
-  args: { current: sites[1] },
+  render: oneSwitcherPerSite,
   parameters: { themes: { themeOverride: "light" } },
   beforeEach: startIn(false),
   play: boxesInTheirSitesPalettes("light"),
 };
 
 export const SiteColoursDark: Story = {
-  args: { current: sites[2] },
+  render: oneSwitcherPerSite,
   parameters: { themes: { themeOverride: "dark" } },
   beforeEach: startIn(true),
   play: boxesInTheirSitesPalettes("dark"),
@@ -305,17 +333,13 @@ export const AlignmentFollowsTheTrigger: Story = {
   play: async (context) => {
     const { canvas, userEvent } = context;
     const padding = canvas.getByTestId("padding");
-    const closeMenu = async () => {
-      await userEvent.keyboard("{Escape}");
-      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
-    };
 
     await expectAlignedRight(await measure(context));
-    await closeMenu();
+    await closeMenu({ userEvent });
 
     padding.style.paddingLeft = nearTheEdge;
     await expectAlignedLeft(await measure(context));
-    await closeMenu();
+    await closeMenu({ userEvent });
 
     padding.style.paddingLeft = withRoom;
     await expectAlignedRight(await measure(context));
