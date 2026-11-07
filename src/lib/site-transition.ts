@@ -7,13 +7,35 @@ import type { Site } from "./sites";
 export const SITE_TRANSITION_ATTRIBUTE = "data-site-transition";
 export const SITE_TRANSITION_TO_ATTRIBUTE = "data-site-transition-to";
 export const SITE_TRANSITION_COOKIE = "site-transition";
-export type SiteTransitionState = "leaving" | "covered" | "revealing";
-
-/** Longer than the cover's 250 ms slide, so it only fires when no animation ends (theme.css missing). */
-const FALLBACK_MS = 500;
+/** The values of the mark on `<html>` (C1); web-template's head script sets `covered` and must match. */
+export const SITE_TRANSITION_STATES = {
+  leaving: "leaving",
+  covered: "covered",
+  revealing: "revealing",
+} as const;
+export type SiteTransitionState = (typeof SITE_TRANSITION_STATES)[keyof typeof SITE_TRANSITION_STATES];
 
 /** The arrival signal's lifetime (C2), in seconds; also how long a leave that never commits stays covered. */
 const SIGNAL_MAX_AGE = 10;
+
+/**
+ * The arrival cookie (C2) a leave from `hostname` to `destinationHref` writes, attributes included:
+ * web-template's head script reads it and deletes it with the same Domain and path. Throws if
+ * `destinationHref` isn't an absolute URL.
+ */
+export const siteTransitionCookie = (destinationHref: string, hostname: string): string => {
+  const domain = cookieDomain(hostname);
+  return [
+    `${SITE_TRANSITION_COOKIE}=${new URL(destinationHref).host}`,
+    ...(domain ? [`Domain=${domain}`] : []),
+    "path=/",
+    `max-age=${SIGNAL_MAX_AGE}`,
+    "SameSite=Lax",
+  ].join("; ");
+};
+
+/** Longer than the cover's 250 ms slide, so it only fires when no animation ends (theme.css missing). */
+const FALLBACK_MS = 500;
 
 /** A URL, or null where `new URL` throws (`URL.parse` is missing in Safari 17). */
 const parseUrl = (url: string, base?: string): URL | null => {
@@ -94,7 +116,7 @@ const leaves = new WeakMap<Document, { mark: Attr | null; cancel: () => void }>(
 /** Whether the mark is still the one a leave set (not removed, or set again since). */
 const isCurrentMark = (doc: Document, mark: Attr | null) =>
   doc.documentElement.getAttributeNode(SITE_TRANSITION_ATTRIBUTE) === mark &&
-  mark?.value === ("leaving" satisfies SiteTransitionState);
+  mark?.value === (SITE_TRANSITION_STATES.leaving);
 
 /** Whether the document is in a leave: from the click until its expiry or a bfcache restore removes the mark. */
 const isLeaving = (doc: Document) => {
@@ -125,18 +147,12 @@ export const leave = (
 
   cancelLeave(doc);
 
-  const host = parseUrl(href, doc.baseURI)?.host ?? parseUrl(site.url)?.host ?? "";
-  const domain = cookieDomain(doc.location.hostname);
-  doc.cookie = [
-    `${SITE_TRANSITION_COOKIE}=${host}`,
-    ...(domain ? [`Domain=${domain}`] : []),
-    "path=/",
-    `max-age=${SIGNAL_MAX_AGE}`,
-    "SameSite=Lax",
-  ].join("; ");
+  // The destination's host, or the site's if the href doesn't parse.
+  const destination = parseUrl(href, doc.baseURI)?.href ?? site.url;
+  doc.cookie = siteTransitionCookie(destination, doc.location.hostname);
 
   root.setAttribute(SITE_TRANSITION_TO_ATTRIBUTE, site.palette);
-  root.setAttribute(SITE_TRANSITION_ATTRIBUTE, "leaving" satisfies SiteTransitionState);
+  root.setAttribute(SITE_TRANSITION_ATTRIBUTE, SITE_TRANSITION_STATES.leaving);
   const mark = root.getAttributeNode(SITE_TRANSITION_ATTRIBUTE);
 
   const state = { mark, cancel: () => {} };
@@ -161,15 +177,15 @@ export const leave = (
 export const arrive = (options?: { document?: Document }): void => {
   const doc = options?.document ?? document;
   const root = doc.documentElement;
-  const covered = () => root.getAttribute(SITE_TRANSITION_ATTRIBUTE) === ("covered" satisfies SiteTransitionState);
+  const covered = () => root.getAttribute(SITE_TRANSITION_ATTRIBUTE) === SITE_TRANSITION_STATES.covered;
 
   const reveal = () => {
     // At activation the head script, registered first, has removed the mark if there was no signal.
     if (!covered()) return;
-    root.setAttribute(SITE_TRANSITION_ATTRIBUTE, "revealing" satisfies SiteTransitionState);
+    root.setAttribute(SITE_TRANSITION_ATTRIBUTE, SITE_TRANSITION_STATES.revealing);
     afterCover(doc, () => {
       // Leave a new transition (a click while revealing) alone.
-      if (root.getAttribute(SITE_TRANSITION_ATTRIBUTE) !== ("revealing" satisfies SiteTransitionState)) return;
+      if (root.getAttribute(SITE_TRANSITION_ATTRIBUTE) !== SITE_TRANSITION_STATES.revealing) return;
       removeMarks(root);
     });
   };

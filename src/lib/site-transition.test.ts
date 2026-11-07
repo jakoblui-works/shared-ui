@@ -175,6 +175,28 @@ type CookieWithAttributes = CookieListItem & {
   sameSite: string;
 };
 
+/**
+ * A document at `url`: a real (detached) <html>, a location, and a cookie jar that keeps every string
+ * written to `document.cookie`.
+ */
+const documentOn = (url: string) => {
+  const written: string[] = [];
+  const page = {
+    documentElement: document.createElement("html"),
+    defaultView: window,
+    location: new URL(url),
+    URL: url,
+    baseURI: url,
+    get cookie() {
+      return "";
+    },
+    set cookie(value: string) {
+      written.push(value);
+    },
+  } as unknown as Document;
+  return { page, written };
+};
+
 // ---------------------------------------------------------------------------------------------
 
 describe("the C1/C2 names", () => {
@@ -182,6 +204,10 @@ describe("the C1/C2 names", () => {
     expect(pkg.SITE_TRANSITION_ATTRIBUTE).toBe("data-site-transition");
     expect(pkg.SITE_TRANSITION_TO_ATTRIBUTE).toBe("data-site-transition-to");
     expect(pkg.SITE_TRANSITION_COOKIE).toBe("site-transition");
+  });
+
+  it("the mark's states are the contract's strings, exported from the package", () => {
+    expect(pkg.SITE_TRANSITION_STATES).toEqual({ leaving: "leaving", covered: "covered", revealing: "revealing" });
   });
 });
 
@@ -339,20 +365,7 @@ describe("leave", { timeout: 20_000 }, () => {
   it("writes Domain from its document's hostname (the platform's two last labels)", async () => {
     // A document on cv.jakoblui.com: a real (detached) <html>, a location, and a cookie jar that keeps
     // what was written. The test page itself is on localhost, where no Domain would be written.
-    const written: string[] = [];
-    const page = {
-      documentElement: document.createElement("html"),
-      defaultView: window,
-      location: new URL(`${cv.url}/some/page`),
-      URL: `${cv.url}/some/page`,
-      baseURI: `${cv.url}/some/page`,
-      get cookie() {
-        return "";
-      },
-      set cookie(value: string) {
-        written.push(value);
-      },
-    } as unknown as Document;
+    const { page, written } = documentOn(`${cv.url}/some/page`);
     const navigate = vi.fn();
     leave(`${ats.url}/`, ats, { navigate, document: page });
 
@@ -363,6 +376,17 @@ describe("leave", { timeout: 20_000 }, () => {
     expect(document.cookie.split("; ").some((value) => value.startsWith(`${SITE_TRANSITION_COOKIE}=`))).toBe(false);
     expect(root.hasAttribute(SITE_TRANSITION_ATTRIBUTE)).toBe(false);
     expect(page.documentElement.getAttribute(SITE_TRANSITION_ATTRIBUTE)).toBe("leaving");
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalled(), patience);
+  });
+
+  it("writes exactly the package's siteTransitionCookie for its href and its document's hostname", async () => {
+    // web-template's tests read the signal from this function, so leave() must write nothing else.
+    const { page, written } = documentOn(`${cv.url}/some/page`);
+    const href = `${ats.url}/some/page?q=1`;
+    const navigate = vi.fn();
+    leave(href, ats, { navigate, document: page });
+
+    expect(written).toEqual([pkg.siteTransitionCookie(href, page.location.hostname)]);
     await vi.waitFor(() => expect(navigate).toHaveBeenCalled(), patience);
   });
 });
