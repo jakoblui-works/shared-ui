@@ -1,9 +1,11 @@
 import { useRender } from "@base-ui/react/use-render";
 import { cn } from "cn";
-import { type ReactElement, type ReactNode } from "react";
+import { type ReactElement, type ReactNode, useEffect } from "react";
 
-import { sites, type SiteSubdomain } from "../../lib/sites";
+import { installSiteTransitions, SITE_TRANSITION_ATTRIBUTE } from "../../lib/site-transition";
+import { sites, type Site, type SiteSubdomain } from "../../lib/sites";
 import { SiteSwitcher } from "../site-switcher/site-switcher";
+import { speculationRules } from "./speculation-rules";
 
 type SiteHeaderProps = {
   /** The site this header is on: its box in the logo, and the one the switcher leaves out. */
@@ -18,14 +20,35 @@ type SiteHeaderProps = {
   className?: string;
   /** The header's right-hand side, e.g. a menu or a theme toggle. */
   children?: ReactNode;
+  /**
+   * For stories and tests only, so a transition to another site never leaves the page: called with the
+   * link's URL instead of navigating. Apps never pass it.
+   */
+  navigate?: (url: string) => void;
+};
+
+/** Adds the speculation rules for the other sites to `<head>`, unless a header already has. */
+const insertSpeculationRules = (current: Site) => {
+  if (document.head.querySelector(`script[type="speculationrules"][${SITE_TRANSITION_ATTRIBUTE}]`)) return;
+  const script = document.createElement("script");
+  script.type = "speculationrules";
+  script.setAttribute(SITE_TRANSITION_ATTRIBUTE, "");
+  script.textContent = JSON.stringify(speculationRules(sites, current));
+  document.head.append(script);
 };
 
 // The logo reads as the domain: the box is the current subdomain (and the switcher to the other
-// sites), the rest links to the current site's root.
-export const SiteHeader = ({ current, homeLink = <a href="/" />, className, children }: SiteHeaderProps) => {
+// sites), the rest links to the current site's root. It also runs the site transitions (C1, C4 in
+// platform-docs/transitions/plan.md), since every page renders it.
+export const SiteHeader = ({ current, homeLink = <a href="/" />, className, children, navigate }: SiteHeaderProps) => {
   const currentSite = sites.find((site) => site.subdomain === current);
   // Only reachable past the type (a cast); failing beats showing another site's box.
   if (!currentSite) throw new Error(`SiteHeader: no site with subdomain "${current}"`);
+  // A new `navigate` reinstalls: the cleanup removes the old listeners first, and arrival again is a
+  // no-op unless `<html>` still reads `covered`.
+  useEffect(() => installSiteTransitions({ sites, current: currentSite, navigate }), [currentSite, navigate]);
+  // Left on unmount: the page keeps its header, and a remount or a second header finds it.
+  useEffect(() => insertSpeculationRules(currentSite), [currentSite]);
   const home = useRender({
     render: homeLink,
     props: {
