@@ -12,6 +12,9 @@
  * other boxes use each site's own palette (see `sites`), at the same steps, 800 and 300 when highlighted.
  * The fonts are site-web's: Inter for text, Space Grotesk for headings, JetBrains Mono for code, Sora for
  * the logo. An app can override them in its own `@theme inline`.
+ * The site-transition cover is drawn here, from the mark on `<html>` alone (`data-site-transition` =
+ * leaving | covered | revealing, and `data-site-transition-to` = the destination's palette), so it
+ * shows before any JavaScript runs.
  */
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/space-grotesk";
@@ -203,4 +206,85 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* The site-transition cover: a panel over the whole page (header and popups included), drawn from the
+   mark on <html>. Leaving: the destination's colour slides in from the right. Covered: the page's own
+   colour, in place. Revealing: slides off to the left. 250 ms, well under the 500 ms JS fallback. */
+html[data-site-transition]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  background-color: var(--primary);
+}
+html[data-site-transition="leaving"]::after {
+  animation: site-transition-in 250ms ease-in both;
+}
+html[data-site-transition="covered"]::after {
+  animation: none;
+}
+html[data-site-transition="revealing"]::after {
+  animation: site-transition-out 250ms ease-out both;
+}
+/* The destination's palette, at the switcher's steps (700 light, 400 dark). Written out in full so
+   Tailwind sees every name; one rule per palette in `Site["palette"]`. */
+html[data-site-transition="leaving"][data-site-transition-to="violet"]::after {
+  background-color: var(--color-violet-700);
+}
+html[data-site-transition="leaving"][data-site-transition-to="emerald"]::after {
+  background-color: var(--color-emerald-700);
+}
+html[data-site-transition="leaving"][data-site-transition-to="amber"]::after {
+  background-color: var(--color-amber-700);
+}
+html.dark[data-site-transition="leaving"][data-site-transition-to="violet"]::after {
+  background-color: var(--color-violet-400);
+}
+html.dark[data-site-transition="leaving"][data-site-transition-to="emerald"]::after {
+  background-color: var(--color-emerald-400);
+}
+html.dark[data-site-transition="leaving"][data-site-transition-to="amber"]::after {
+  background-color: var(--color-amber-400);
+}
+@keyframes site-transition-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes site-transition-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes site-transition-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes site-transition-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-site-transition="leaving"]::after {
+    animation: site-transition-fade-in 250ms ease-in both;
+  }
+  html[data-site-transition="revealing"]::after {
+    animation: site-transition-fade-out 250ms ease-out both;
+  }
 }
