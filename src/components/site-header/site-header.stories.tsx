@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, fn, type Mock, screen, waitFor } from "storybook/test";
@@ -260,6 +261,39 @@ export const SpeculationRulesTextIsTheExportedText: Story = {
     const selector = `script[type="speculationrules"][${MARK}]`;
     await waitFor(() => expect(document.head.querySelectorAll(selector)).toHaveLength(1));
     await expect(document.head.querySelector(selector)!.textContent).toBe(speculationRulesText(args.current));
+  },
+};
+
+// Plan rule (lasting): with reduced motion, the cover fades instead of sliding. CSS decides, so the
+// browser's media is emulated (Chromium, through the test runner's CDP session); outside the test
+// runner (the Storybook UI) there is no emulation and the story only renders.
+export const ReducedMotionFades: Story = {
+  play: async () => {
+    if (import.meta.env.MODE !== "test") return;
+    const { cdp } = await import("vitest/browser");
+    // The Playwright provider's session; its types don't name `send` without Playwright's own.
+    const session = cdp() as unknown as { send: (method: string, params: object) => Promise<unknown> };
+    await session.send("Emulation.setEmulatedMedia", {
+      features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+    });
+    try {
+      await expect(matchMedia("(prefers-reduced-motion: reduce)").matches, "reduced motion emulated").toBe(true);
+      const marks: Array<[string, Record<string, string>]> = [
+        ["leaving", { [MARK]: "leaving", [MARK_TO]: siteFor("cv").palette }],
+        ["revealing", { [MARK]: "revealing" }],
+      ];
+      for (const [state, mark] of marks) {
+        for (const [name, value] of Object.entries(mark)) root.setAttribute(name, value);
+        const cover = getComputedStyle(root, "::after");
+        // A fade (one of the opacity keyframes), never a slide.
+        await expect(["site-transition-fade-in", "site-transition-fade-out"], state).toContain(cover.animationName);
+        await expect(cover.transform, state).toBe("none");
+        root.removeAttribute(MARK);
+        root.removeAttribute(MARK_TO);
+      }
+    } finally {
+      await session.send("Emulation.setEmulatedMedia", { features: [] });
+    }
   },
 };
 
