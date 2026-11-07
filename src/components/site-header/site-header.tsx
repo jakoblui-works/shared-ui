@@ -3,9 +3,9 @@ import { cn } from "cn";
 import { type ReactElement, type ReactNode, useEffect } from "react";
 
 import { installSiteTransitions, SITE_TRANSITION_ATTRIBUTE } from "../../lib/site-transition";
-import { sites, type Site, type SiteSubdomain } from "../../lib/sites";
+import { sites, type SiteSubdomain } from "../../lib/sites";
 import { SiteSwitcher } from "../site-switcher/site-switcher";
-import { speculationRules } from "./speculation-rules";
+import { speculationRulesText } from "./speculation-rules";
 
 type SiteHeaderProps = {
   /** The site this header is on: its box in the logo, and the one the switcher leaves out. */
@@ -28,12 +28,13 @@ type SiteHeaderProps = {
 };
 
 /** Adds the speculation rules for the other sites to `<head>`, unless a header already has. */
-const insertSpeculationRules = (current: Site) => {
+const insertSpeculationRules = (current: SiteSubdomain) => {
   if (document.head.querySelector(`script[type="speculationrules"][${SITE_TRANSITION_ATTRIBUTE}]`)) return;
   const script = document.createElement("script");
   script.type = "speculationrules";
   script.setAttribute(SITE_TRANSITION_ATTRIBUTE, "");
-  script.textContent = JSON.stringify(speculationRules(sites, current));
+  // Exactly the exported text: a CSP site allows it by its hash.
+  script.textContent = speculationRulesText(current);
   document.head.append(script);
 };
 
@@ -48,7 +49,7 @@ export const SiteHeader = ({ current, homeLink = <a href="/" />, className, chil
   // no-op unless `<html>` still reads `covered`.
   useEffect(() => installSiteTransitions({ sites, current: currentSite, navigate }), [currentSite, navigate]);
   // Left on unmount: the page keeps its header, and a remount or a second header finds it.
-  useEffect(() => insertSpeculationRules(currentSite), [currentSite]);
+  useEffect(() => insertSpeculationRules(current), [current]);
   const home = useRender({
     render: homeLink,
     props: {

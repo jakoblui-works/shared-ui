@@ -1,4 +1,4 @@
-import type { Site } from "../../lib/sites";
+import { sites, type Site, type SiteSubdomain } from "../../lib/sites";
 
 type SpeculationRules = {
   prerender: Array<{ where: { or: Array<{ href_matches: string }> }; eagerness: "moderate" }>;
@@ -21,3 +21,15 @@ export const speculationRules = (sites: readonly Site[], current: Site): Specula
     },
   ],
 });
+
+/**
+ * The exact text `SiteHeader` inserts as its speculation rules, exported so a site's build can hash it
+ * for its Content-Security-Policy (C4): Chromium ignores `'inline-speculation-rules'` when `script-src`
+ * lists hashes, and a hash only matches this text character for character.
+ */
+export const speculationRulesText = (current: SiteSubdomain): string => {
+  const currentSite = sites.find((site) => site.subdomain === current);
+  // Only reachable past the type (a cast), as in SiteHeader.
+  if (!currentSite) throw new Error(`speculationRulesText: no site with subdomain "${current}"`);
+  return JSON.stringify(speculationRules(sites, currentSite));
+};

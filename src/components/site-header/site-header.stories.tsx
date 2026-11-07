@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, fn, type Mock, screen, waitFor } from "storybook/test";
 
+import { speculationRulesText } from "../../index";
 import { type Site, sites } from "../../lib/sites";
 import { SiteHeader } from "./site-header";
 
@@ -248,6 +249,17 @@ export const SpeculationRulesOnce: Story = {
       }
     }
     await expect(prerendered(new URL("/elsewhere", document.baseURI).href), "this page's own origin").toBe(false);
+  },
+};
+
+// C4 (lasting): the inserted text is exactly the package's `speculationRulesText`, character for
+// character, since a site's CSP build allows it by its hash; any difference silently stops prerendering.
+export const SpeculationRulesTextIsTheExportedText: Story = {
+  args: { current: "ats" },
+  play: async ({ args }) => {
+    const selector = `script[type="speculationrules"][${MARK}]`;
+    await waitFor(() => expect(document.head.querySelectorAll(selector)).toHaveLength(1));
+    await expect(document.head.querySelector(selector)!.textContent).toBe(speculationRulesText(args.current));
   },
 };
 
