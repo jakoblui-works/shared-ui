@@ -25,6 +25,21 @@ export default defineConfig({
           },
         },
       },
+      {
+        extends: true,
+        // Ordinary tests for code outside components (src/lib), in the same headless Chromium, so they
+        // run against a real DOM, cookies and CSS animations.
+        test: {
+          name: "unit",
+          include: ["src/**/*.test.ts"],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright({}),
+            instances: [{ browser: "chromium" }],
+          },
+        },
+      },
     ],
   },
 });

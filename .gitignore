@@ -4,3 +4,10 @@ dist
 *.local
 *storybook.log
 storybook-static
+
+# Proofs from /build runs (temporary, never committed)
+*.proof.*
+*_proof.py
+
+# Screenshots from failing Vitest runs
+.vitest/
