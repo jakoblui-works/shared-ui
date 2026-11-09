@@ -15,7 +15,7 @@ type NotFoundProps = {
 
 /**
  * A 404 page's content, for apps that don't draw their own: what was asked for, and the way home.
- * The page adds the header around it.
+ * The page adds the header around it. web-template's app renders it; an app replaces it by drawing its own.
  */
 export const NotFound = ({ path, homeLink = <a href="/" />, className }: NotFoundProps) => {
   const home = useRender({

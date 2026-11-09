@@ -4,6 +4,10 @@
 // that touches the DOM takes its document, so tests can pass their own.
 import type { Site } from "./sites";
 
+// The mark's names and values and the cookie: web-template's head script and its tests match these, and
+// theme.css's selectors repeat them as literals (CSS can't import them). The module uses these, never
+// literals. Only these and `siteTransitionCookie` are in the package's exports; the rest is reached
+// through SiteHeader.
 export const SITE_TRANSITION_ATTRIBUTE = "data-site-transition";
 export const SITE_TRANSITION_TO_ATTRIBUTE = "data-site-transition-to";
 export const SITE_TRANSITION_COOKIE = "site-transition";

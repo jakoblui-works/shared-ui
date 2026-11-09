@@ -1,6 +1,6 @@
 # shared-ui
 
-UI shared by the jakoblui.com sites (cv-web, site-web), published to GitHub Packages as `@jakoblui-works/shared-ui`: the site header and switcher, the theme (tokens, fonts), a default 404 page, the theme toggle and the site transitions (a colour panel that slides over the page when a link goes to another site). Components are built in this repo's Storybook and used by the apps from the package; code that must stay identical across sites lives here rather than in `web-template`. Static files every site serves (the favicons) come from `web-template` instead, since `copier update` keeps them in sync without a copy step.
+`@jakoblui-works/shared-ui` on GitHub Packages: the code every jakoblui.com site must share exactly (header and site switcher, theme and fonts, `NotFound`, `ThemeToggle`, site transitions). Built in this repo's Storybook; the apps install it. Static files every site serves (favicons) belong in `web-template`, not here.
 
 ## Commands
 ```sh
@@ -8,42 +8,41 @@ pnpm install
 pnpm storybook         # :6006
 pnpm lint
 pnpm typecheck
-pnpm test              # two Vitest projects in headless Chromium: storybook (every story is a test) and unit (src/**/*.test.ts)
-pnpm exec vitest run --project unit   # the unit project only
-pnpm build             # tsdown → dist/ (ESM, .d.ts, theme.css)
-pnpm check-package     # publint on the built package; run after build```
+pnpm test              # Vitest in headless Chromium: storybook (every story) and unit (src/**/*.test.ts)
+pnpm exec vitest run --project unit
+pnpm build             # tsdown → dist/
+pnpm check-package     # publint; run after build
+```
 
 ## Layout
-- `src/index.ts`: the package's exports. Anything an app imports goes through here.
-- `src/components/<name>/`: one folder per component, holding `<name>.tsx`, its stories and any tests. Files are named after the component (no `index.tsx`).
-- `src/components/site-header/`: `SiteHeader`. The right-hand side is `children`; `homeLink` is the element `.jakoblui` renders as (default `<a href="/" />`; apps pass their router's `<Link to="/" />`), merged with Base UI's `useRender`, so the package doesn't depend on a router. The logo group is `data-slot="site-logo"` for apps that need to find it (site-web's x-ray). It also installs the site transitions (`installSiteTransitions` in an effect, cleaned up on unmount) and inserts the speculation rules once as `<script type="speculationrules" data-site-transition>` in `<head>` (`speculation-rules.ts`: prerender, eagerness `moderate`, for links to the other sites' origins; left in place on unmount). The inserted text is exactly `speculationRulesText(current)`, exported from `index.ts` so `web-template`'s build can put its sha256 in a CSP site's `script-src` (Chromium ignores `'inline-speculation-rules'` when `script-src` lists hashes); the hash only matches the same text from the same package version, so never build the rules' text anywhere else. The optional `navigate` prop replaces `location.assign` for stories and tests only; apps never pass it.
-- `src/components/site-switcher/`: `SiteSwitcher`, the logo's box, on Base UI's `Menu`. The current site's box is the app's `primary`; the others are in their own site's palette, from a map of literal class names (Tailwind only generates classes it finds as text). Its boxes line up with the trigger's right edge, or with its left edge when a right-aligned box would come within 1rem of the window's left edge (measured each time the menu opens).
-- `src/components/not-found/`: `NotFound`, a 404 page's content (the app adds its header) for apps that don't draw their own: the path asked for and the way home, a `homeLink` element merged like `SiteHeader`'s. `web-template` renders it; an app replaces it by drawing its own.
-- `src/components/theme-toggle/`: `ThemeToggle` (on Base UI's `Switch`) and `THEME_STORAGE_KEY`. No provider: it starts from the `.dark` class the app's inline script in `index.html` set from the stored choice, and stores the new choice under the same key. Apps are dark-only unless they add it (`web-template`'s `theme_toggle`).
-- `src/components/site-transition-cover/`: stories only, for the cover's states (leaving to each palette, covered, revealing mid-slide), light and dark.
-- `src/lib/site-transition.ts`: the site transition's logic, no React; every function that touches the DOM takes its `document` (default: the global one) so tests can pass their own. `transitionTarget` classifies a click (only a plain primary-button click on an `<a href>` to another site in `sites.ts`); `leave` writes the arrival cookie, marks `<html>` leaving and navigates once the cover's `animationend` fires (or after a 500 ms fallback); `arrive` slides the cover off a page marked `covered` (waiting for `prerenderingchange` if prerendering) and removes the marks; `installSiteTransitions` wires the click listener, `arrive` and a `pageshow` listener that clears the marks on a bfcache restore, and returns the cleanup. A click during a leave is swallowed (navigate is called once per leave), and a leave that never commits uncovers the page when the cookie expires. Only the five exports below are exported from `index.ts` (the other functions are internal; apps get them through `SiteHeader`), and `web-template`'s head script and its tests must match them: `SITE_TRANSITION_ATTRIBUTE` (`data-site-transition` on `<html>`), `SITE_TRANSITION_STATES` (its values: `leaving` | `covered` | `revealing`; `SiteTransitionState` is derived from it), `SITE_TRANSITION_TO_ATTRIBUTE` (`data-site-transition-to`, the destination's palette while leaving), `SITE_TRANSITION_COOKIE` (the cookie's name, `site-transition`) and `siteTransitionCookie(destinationHref, hostname)`, the exact string `leave` writes (`site-transition=<destination host>`, Domain the hostname's last two labels when it has them, `path=/`, `max-age=10`, `SameSite=Lax`). The module uses these rather than literals; `theme.css`'s selectors keep the literal values (CSS can't import them), so a changed value there needs both.
-- `src/lib/sites.ts`: the sites in the switcher, each with its brand palette (a Tailwind palette name, the same one the site's app sets as its `--color-primary-*`). A new site goes here, then every app picks it up with a version bump; a palette not yet used also needs a name in `Site["palette"]` and an entry in the switcher's class map (a type error until it has one).
-- `src/theme.css`: shipped as source in `dist/theme.css`. The token block every site shares (shadcn's light and dark tokens, the fonts, `--spacing-header`, the `notch` utility, `slide-out`), the site-transition cover (`html[data-site-transition]::after`, with its keyframes), plus an `@source` that points the app's Tailwind at the package's built components, which it would otherwise skip in `node_modules`. Its header comment shows how an app imports it and what it sets itself (the `--color-primary-*` palette). The fonts are site-web's (Inter, Space Grotesk headings, JetBrains Mono, Sora for the logo), since site-web is the source of truth for the shared look. Tokens are CSS, not a React provider: Tailwind needs them at build time.
-- `vite.config.ts` and `.storybook/` are only for Storybook and Vitest; the package is built by tsdown (`tsdown.config.ts`). `.storybook/preview.css` stands in for an app's stylesheet (violet); the toolbar switches light and dark.
+- `src/index.ts`: the package's exports; anything an app imports goes through here.
+- `src/components/<name>/`: one folder per component: `<name>.tsx` (no `index.tsx`), its stories, any tests.
+- `src/lib/`: logic without React, with ordinary Vitest tests beside it.
+- `src/lib/sites.ts`: the sites in the switcher, each with its palette.
+- `src/theme.css`: tokens, fonts, utilities and the transition cover; shipped as source in `dist/theme.css`.
+- `vite.config.ts`, `.storybook/`: Storybook and Vitest only; the package is built by `tsdown.config.ts`.
 
 ## Rules
-- **Relative imports only** inside `src/` (no `@/` alias) for now: tsdown would resolve one, but it would have to be kept in step in `tsconfig.json` and `vite.config.ts` (Storybook, Vitest) as well.
-- Libraries a second copy would break are `peerDependencies` (`react`, `react-dom`, `@base-ui/react`, `tailwindcss`; dev dependencies too, for Storybook), so the app's copy is used. Small libraries where a duplicate is harmless (`cn`, `lucide-react`) and the fonts `theme.css` imports go in `dependencies`. tsdown leaves both out of the bundle. Peer ranges start at the oldest version the apps run (Base UI 1.8) or the components need (Tailwind 4.1 for `pointer-coarse:`).
-- shadcn's own CSS (`tw-animate-css`, `shadcn/tailwind.css`) stays in the apps, which own their shadcn setup; the `shadcn` package is a CLI too heavy to depend on. The components here don't need it.
-- Components work in light and dark (cv-web has both); check both in Storybook.
-- Stories are the tests: a story fails if its component throws, and a `play` function checks behaviour. Logic outside components gets ordinary Vitest tests.
+- Relative imports only inside `src/` (no `@/` alias).
+- Libraries a second copy would break (`react`, `react-dom`, `@base-ui/react`, `tailwindcss`) are `peerDependencies`, also in dev dependencies; peer ranges start at the oldest version the apps run or the components need. Small libraries where a duplicate is harmless, and the fonts `theme.css` imports, are `dependencies`.
+- shadcn's own CSS (`tw-animate-css`, `shadcn/tailwind.css`) stays in the apps; don't depend on `shadcn`.
+- Components work in light and dark; check both in Storybook.
+- Stories are the tests: every component has stories, with a `play` function for behaviour. Logic outside components gets ordinary Vitest tests.
+- A new site goes in `sites.ts`; a new palette also needs SiteSwitcher's class map and theme.css's cover rules.
+- `SITE_TRANSITION_ATTRIBUTE`, `SITE_TRANSITION_STATES`, `SITE_TRANSITION_TO_ATTRIBUTE`, `SITE_TRANSITION_COOKIE` and `siteTransitionCookie` are a contract with `web-template`'s head script and its tests; keep them exported, and change a value only together with `theme.css`, which repeats it literally, and `web-template`.
+- Never build the speculation rules' text anywhere but `speculationRulesText`: sites put its hash in their CSP.
 - **Site transitions:**
-  - Links stay real `<a href>`: the click handler only delays the navigation, it never rewrites or replaces a link.
-  - The cover never takes pointer events, and is drawn by CSS from the mark on `<html>` alone, so it shows before any JavaScript runs.
+  - Links stay real `<a href>`: the click handler only delays a navigation, never rewrites or replaces a link.
+  - The cover never takes pointer events, and is drawn by CSS from the mark on `<html>` alone.
   - Reduced motion fades instead of sliding.
   - Modified clicks (ctrl, meta, shift, alt, other buttons), a `target` other than `_self` and `download` links are the browser's.
-  - The head script in `web-template` owns reading (and deleting) the arrival cookie; this package only writes it.
+  - Only `web-template`'s head script reads or deletes the arrival cookie; this package only writes it.
   - Animations stay well under the 500 ms fallback, the reduced-motion fade included.
 
 ## Publishing
-- Bump `version` in `package.json`, merge, then tag `main` with `v<version>` (e.g. `v0.0.2`). The tag runs `publish.yml`: CI, then checks that the tag matches the version and is on `main`, then `pnpm publish` (which builds first, `prepack`) to GitHub Packages with `GITHUB_TOKEN`. A published version can't be replaced; fix forward with a new one.
-- The same tag builds the Storybook image (`Dockerfile.storybook`, `nginx.conf`; pushed to GHCR as `shared-ui-storybook`) and triggers the infra deploy, so the hosted Storybook always shows a published version. storybook.jakoblui.com composes it through `refs`. A push to `main` without a tag deploys nothing. If the image or the deploy fails after the publish, use "Re-run failed jobs": re-running all jobs fails at the publish, since the version already exists.
-- **Installing needs a token even though the package is public** (a GitHub Packages rule). An app commits an `.npmrc` with only the scope: `@jakoblui-works:registry=https://npm.pkg.github.com`. The token goes elsewhere, never in the repo's `.npmrc` (pnpm ignores tokens there):
-  - locally: a classic PAT with `read:packages`, `pnpm config set "//npm.pkg.github.com/:_authToken" <token>`;
-  - an app's CI: `GITHUB_TOKEN`, after this package's settings give the app's repo read access ("Manage Actions access");
-  - Docker builds: as a BuildKit secret, never a build arg, so it stays out of the image.
+- Bump `version` in `package.json`, merge, then tag `main` with `v<version>`. The tag publishes, builds the Storybook image and deploys it; a push without a tag deploys nothing.
+- A published version can't be replaced; fix forward with a new one. If a job fails after the publish, use "Re-run failed jobs", never re-run all.
+- Installing needs a token even though the package is public. An app's committed `.npmrc` holds only `@jakoblui-works:registry=https://npm.pkg.github.com`; the token never goes in a repo's `.npmrc`:
+  - locally: a classic PAT with `read:packages`, via `pnpm config set "//npm.pkg.github.com/:_authToken" <token>`;
+  - an app's CI: `GITHUB_TOKEN`, once this package's "Manage Actions access" gives the app's repo read access;
+  - Docker builds: a BuildKit secret, never a build arg.
