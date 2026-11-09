@@ -12,8 +12,8 @@ const testHref = "/test-home";
 const testAttribute = "data-test-link";
 
 // ---------------------------------------------------------------------------------------------
-// Site transitions (T2.3, C1, C4). The mark's names are written out (the C1 strings) rather than
-// imported, so these stories don't depend on the transition module's file to load.
+// Site transitions. The mark's names are written out rather than imported, so these stories don't
+// depend on the transition module's file to load.
 
 const root = document.documentElement;
 const MARK = "data-site-transition";
@@ -115,7 +115,7 @@ const itemFor = (items: HTMLElement[], site: Site) => {
 /** Generous: only turns a navigation that never comes into a clear failure (not the animation's length). */
 const patience = { timeout: 4000 };
 
-// L4 (lasting): links stay links. The click handler only delays a navigation; every site link is a real
+// Links stay links. The click handler only delays a navigation; every site link is a real
 // <a href>, and the cover (a pseudo-element) never takes pointer events.
 export const LinksStayLinks: Story = {
   play: async ({ args, canvas, userEvent }) => {
@@ -225,7 +225,7 @@ const RemountableHeaders = (args: PlayContext["args"]) => {
 
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-// C4: the page has exactly one speculation-rules script, prerendering links to the other sites
+// The page has exactly one speculation-rules script, prerendering links to the other sites
 // (eagerness moderate), never the current one; however many headers render, or re-render.
 export const SpeculationRulesOnce: Story = {
   args: { current: "cv" },
@@ -253,7 +253,7 @@ export const SpeculationRulesOnce: Story = {
   },
 };
 
-// C4 (lasting): the inserted text is exactly the package's `speculationRulesText`, character for
+// The inserted text is exactly the package's `speculationRulesText`, character for
 // character, since a site's CSP build allows it by its hash; any difference silently stops prerendering.
 export const SpeculationRulesTextIsTheExportedText: Story = {
   args: { current: "ats" },
@@ -298,7 +298,7 @@ export const ReducedMotionFades: Story = {
 };
 
 // ---------------------------------------------------------------------------------------------
-// Arrival and listener balance through the header (T2.3 review).
+// Arrival and listener balance through the header.
 
 /** The mark's values from `beforeEach` on, in order: each change's old value, then the current one. */
 let markHistory: Array<string | null> = [];

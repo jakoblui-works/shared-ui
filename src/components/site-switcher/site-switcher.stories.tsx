@@ -146,7 +146,7 @@ const closeMenu = async ({ userEvent }: Pick<PlayContext, "userEvent">) => {
 };
 
 // ---------------------------------------------------------------------------------------------
-// T2: each item's box is in its own site's palette; the trigger stays `primary`.
+// Each item's box is in its own site's palette; the trigger stays `primary`.
 
 /** One switcher per site as the current one, so every site shows up as an item. */
 const oneSwitcherPerSite: Story["render"] = (args) => (
@@ -223,7 +223,7 @@ export const SiteColoursDark: Story = {
 };
 
 // ---------------------------------------------------------------------------------------------
-// T3: boxes right-align under the trigger, unless one would come within 1rem of the window's left
+// Boxes right-align under the trigger, unless one would come within 1rem of the window's left
 // edge; then they all left-align with the trigger.
 
 /** A site whose box is much wider than the trigger's (invented for the stories). */

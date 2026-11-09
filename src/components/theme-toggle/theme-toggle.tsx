@@ -19,7 +19,6 @@ const prefersReducedMotion = () => {
 
 /**
  * A light/dark switch. It starts from the class the inline script set, so it needs no provider.
- * An app without it is dark-only; web-template adds it with its `theme_toggle` answer.
  */
 export const ThemeToggle = () => {
   // Read after mounting, not while rendering: a prerendered page is rendered in Node, which has no

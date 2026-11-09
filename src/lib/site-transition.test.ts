@@ -1,7 +1,7 @@
-// T2.1: the transition core, in headless Chromium (the "unit" project), against the real DOM,
+// The transition core, in headless Chromium (the "unit" project), against the real DOM,
 // cookies and CSS animations. Navigation is always injected, so the test page never leaves.
 //
-// The tests don't load theme.css (T2.2): with no cover animation, leave() and arrive() finish on their
+// The tests don't load theme.css: with no cover animation, leave() and arrive() finish on their
 // fallback. Where a test needs a cover animation it adds its own, so neither the duration nor the
 // easing of the real one matters here.
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -199,7 +199,7 @@ const documentOn = (url: string) => {
 
 // ---------------------------------------------------------------------------------------------
 
-describe("the C1/C2 names", () => {
+describe("the shared names", () => {
   it("are the contract's strings, exported from the package", () => {
     expect(pkg.SITE_TRANSITION_ATTRIBUTE).toBe("data-site-transition");
     expect(pkg.SITE_TRANSITION_TO_ATTRIBUTE).toBe("data-site-transition-to");
@@ -310,7 +310,7 @@ describe("leave", { timeout: 20_000 }, () => {
     expect(cookie).toMatchObject({ value: new URL(cv.url).host, path: "/" });
     // The test page is on localhost, a single label: no Domain attribute.
     expect(cookie?.domain ?? null).toBeNull();
-    // max-age=10 (C2), allowing a second for the clock between the two readings.
+    // max-age=10, allowing a second for the clock between the two readings.
     expect(cookie?.expires).toBeGreaterThanOrEqual(before + 10_000 - 1000);
     expect(cookie?.expires).toBeLessThanOrEqual(Date.now() + 10_000 + 1000);
     // SameSite=Lax isn't checked: Chromium reports "lax" for a cookie written without SameSite too.
@@ -380,7 +380,7 @@ describe("leave", { timeout: 20_000 }, () => {
   });
 
   it("writes exactly the package's siteTransitionCookie for its href and its document's hostname", async () => {
-    // web-template's tests read the signal from this function, so leave() must write nothing else.
+    // Sites' head-script tests read the signal from this function, so leave() must write nothing else.
     const { page, written } = documentOn(`${cv.url}/some/page`);
     const href = `${ats.url}/some/page?q=1`;
     const navigate = vi.fn();
@@ -534,7 +534,7 @@ describe("installSiteTransitions", { timeout: 20_000 }, () => {
     expect(navigate).toHaveBeenCalledWith(links[0].href);
   });
 
-  // Decision (T2.1 review, round 2): transitioning clicks are swallowed for the whole leave (the cover
+  // Transitioning clicks are swallowed for the whole leave (the cover
   // is opaque: a double click or a blind one). The leave ends at the cookie's expiry or a bfcache pageshow.
   it("swallows transitioning clicks for the whole leave, also after navigate; a bfcache pageshow ends it", async () => {
     const navigate = vi.fn();
@@ -586,7 +586,7 @@ describe("installSiteTransitions", { timeout: 20_000 }, () => {
       await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(2), patience);
       expect(navigate).toHaveBeenLastCalledWith(again.href);
     },
-    // The cookie lives 10 s (C2); this only bounds a hang.
+    // The cookie lives 10 s; this only bounds a hang.
     40_000,
   );
 

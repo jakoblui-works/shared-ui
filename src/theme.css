@@ -11,8 +11,8 @@
  * The header uses `primary` (light mode 700, dark mode 400) for the current site's box. The switcher's
  * other boxes use each site's own palette (see `sites`), at the same steps, 800 and 300 when highlighted.
  * The fonts are site-web's: Inter for text, Space Grotesk for headings, JetBrains Mono for code, Sora for
- * the logo. An app can override them in its own `@theme inline`. site-web is the source of truth for the
- * shared look. The tokens are CSS rather than a React provider because Tailwind needs them at build time.
+ * the logo. An app can override them in its own `@theme inline`. The tokens are CSS rather than a React
+ * provider because Tailwind needs them at build time.
  * The site-transition cover is drawn here, from the mark on `<html>` alone (`data-site-transition` =
  * leaving | covered | revealing, and `data-site-transition-to` = the destination's palette), so it
  * shows before any JavaScript runs.

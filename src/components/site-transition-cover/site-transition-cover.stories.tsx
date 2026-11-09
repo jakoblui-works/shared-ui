@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { SiteHeader } from "../site-header/site-header";
 
 // The cover is drawn by theme.css from the mark on <html> alone. Each story sets the mark and removes it
-// on cleanup, so other stories aren't affected. The mark's names are the C1 strings.
+// on cleanup, so other stories aren't affected.
 const MARK = "data-site-transition";
 const MARK_TO = "data-site-transition-to";
 const root = document.documentElement;

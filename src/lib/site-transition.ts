@@ -1,17 +1,15 @@
-// The site transition (C1, C2 in platform-docs/transitions/plan.md): a click on another site's link
-// covers the page in that site's colour, then navigates; the next page, marked `covered` by its head
-// script (web-template), slides the cover off. No React, so SiteHeader only installs it; every function
-// that touches the DOM takes its document, so tests can pass their own.
+// The site transition: a click on another site's link covers the page in that site's colour, then
+// navigates; the next page, marked `covered` by its head script, slides the cover off. No React, so
+// SiteHeader only installs it; every function that touches the DOM takes its document, so tests can
+// pass their own.
 import type { Site } from "./sites";
 
-// The mark's names and values and the cookie: web-template's head script and its tests match these, and
-// theme.css's selectors repeat them as literals (CSS can't import them). The module uses these, never
-// literals. Only these and `siteTransitionCookie` are in the package's exports; the rest is reached
-// through SiteHeader.
+// Shared with every site's head script: web-template's site-transition-head-script test checks it
+// against these. theme.css's selectors repeat them as literals (CSS can't import them).
 export const SITE_TRANSITION_ATTRIBUTE = "data-site-transition";
 export const SITE_TRANSITION_TO_ATTRIBUTE = "data-site-transition-to";
 export const SITE_TRANSITION_COOKIE = "site-transition";
-/** The values of the mark on `<html>` (C1); web-template's head script sets `covered` and must match. */
+/** The values of the mark on `<html>`. */
 export const SITE_TRANSITION_STATES = {
   leaving: "leaving",
   covered: "covered",
@@ -19,12 +17,11 @@ export const SITE_TRANSITION_STATES = {
 } as const;
 export type SiteTransitionState = (typeof SITE_TRANSITION_STATES)[keyof typeof SITE_TRANSITION_STATES];
 
-/** The arrival signal's lifetime (C2), in seconds; also how long a leave that never commits stays covered. */
+/** The arrival signal's lifetime, in seconds; also how long a leave that never commits stays covered. */
 const SIGNAL_MAX_AGE = 10;
 
 /**
- * The arrival cookie (C2) a leave from `hostname` to `destinationHref` writes, attributes included:
- * web-template's head script reads it and deletes it with the same Domain and path. Throws if
+ * The arrival cookie a leave from `hostname` to `destinationHref` writes, attributes included. Throws if
  * `destinationHref` isn't an absolute URL.
  */
 export const siteTransitionCookie = (destinationHref: string, hostname: string): string => {
@@ -139,7 +136,7 @@ const removeMarks = (root: Element) => {
   root.removeAttribute(SITE_TRANSITION_TO_ATTRIBUTE);
 };
 
-/** Leaving (C1, C2): writes the arrival signal, marks `<html>` leaving, navigates once the cover is in. */
+/** Leaving: writes the arrival signal, marks `<html>` leaving, navigates once the cover is in. */
 export const leave = (
   href: string,
   site: Site,
@@ -175,7 +172,7 @@ export const leave = (
 };
 
 /**
- * Arriving (C1): slides the cover off a page its head script marked `covered`, after activation if
+ * Arriving: slides the cover off a page its head script marked `covered`, after activation if
  * prerendered. Never reads or writes the cookie: the head script owns the signal.
  */
 export const arrive = (options?: { document?: Document }): void => {
