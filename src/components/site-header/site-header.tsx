@@ -39,8 +39,8 @@ const insertSpeculationRules = (current: SiteSubdomain) => {
 };
 
 // The logo reads as the domain: the box is the current subdomain (and the switcher to the other
-// sites), the rest links to the current site's root. It also runs the site transitions (C1, C4 in
-// platform-docs/transitions/plan.md), since every page renders it.
+// sites), the rest links to the current site's root. It also runs the site transitions,
+// since every page renders it.
 export const SiteHeader = ({ current, homeLink = <a href="/" />, className, children, navigate }: SiteHeaderProps) => {
   const currentSite = sites.find((site) => site.subdomain === current);
   // Only reachable past the type (a cast); failing beats showing another site's box.

@@ -17,7 +17,9 @@ const prefersReducedMotion = () => {
   return matchMedia("(prefers-reduced-motion: reduce)").matches;
 };
 
-/** A light/dark switch. It starts from the class the inline script set, so it needs no provider. */
+/**
+ * A light/dark switch. It starts from the class the inline script set, so it needs no provider.
+ */
 export const ThemeToggle = () => {
   // Read after mounting, not while rendering: a prerendered page is rendered in Node, which has no
   // document, and the page's first render has to match it. Until then (`null`) the page is showing

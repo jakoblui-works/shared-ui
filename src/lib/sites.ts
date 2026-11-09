@@ -3,7 +3,10 @@ export type Site = {
   subdomain: string;
   label: string;
   url: string;
-  /** The site's brand colour, a Tailwind palette name. */
+  /**
+   * The site's brand colour, a Tailwind palette name: the one its app sets as `--color-primary-*`.
+   * A new name also needs SiteSwitcher's class map (a type error until then) and theme.css's cover rules.
+   */
   palette: "violet" | "emerald" | "amber";
 };
 
